@@ -1,0 +1,39 @@
+/**
+     * @method: processAfterUpdate.
+     * @description: Hanldes the After Update Stage.
+	*/
+    public override void processAfterUpdate(){
+        try{
+            
+            List<Case> lstCases = Trigger.New;
+            List<String> lstCasesToUpdate = new List<String>();
+            For(Case record : lstCases){
+                Case oldCase = (Case)Trigger.oldMap.get(record.Id);
+                if(record.Subject_Category__c != oldCase.Subject_Category__c) {
+                    lstCasesToUpdate.add(record.Id);
+                }
+            }
+            if(lstCasesToUpdate.size()>0){
+                TriggerAssignmentRules(lstCasesToUpdate);
+            }           
+        }catch(Exception ex){
+            ErrorLog.sendErrorMail('CASE TRIGGER',ex.getMessage(), 'CaseAssignmentRules',
+                                   string.valueOf(ex.getLineNumber()));        
+        }
+    }
+
+    /**
+     * @method: TriggerAssignmentRules.
+     * @description: Assign the rule to update the case owner.
+	*/
+    public static void TriggerAssignmentRules(List<String> lstCases){       
+        Database.DMLOptions dmlOpts = new Database.DMLOptions();
+        dmlOpts.assignmentRuleHeader.useDefaultRule = true;
+        
+        List<Case> lstupdateCases = [SELECT id FROM Case WHERE id IN : lstCases];
+        
+        for (Case record : lstupdateCases){
+            record.setOptions(dmlOpts);
+        }
+        Database.update(lstupdateCases, dmlOpts);
+    }
